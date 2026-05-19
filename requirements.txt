@@ -1,0 +1,28 @@
+# Enhanced RL Trading System — Dependencies
+# Install with: pip install -r requirements.txt
+
+# Core RL framework
+gymnasium>=0.29.0
+stable-baselines3[extra]>=2.3.0
+
+# Data
+yfinance>=0.2.40
+pandas>=2.0.0
+numpy>=1.26.0
+
+# Technical analysis utilities (optional, manual implementation used in main.py)
+# ta>=0.11.0
+
+# Scientific computing
+scipy>=1.13.0
+
+# Visualisation
+matplotlib>=3.8.0
+
+# Progress bars (used by stable-baselines3)
+tqdm>=4.66.0
+
+# PyTorch — install separately for GPU support:
+# CPU:  pip install torch --index-url https://download.pytorch.org/whl/cpu
+# GPU:  pip install torch --index-url https://download.pytorch.org/whl/cu118
+torch>=2.1.0
