@@ -4,39 +4,7 @@
 
 ---
 
-## Table of Contents
-
-1. [What Was Wrong With the Baseline](#1-what-was-wrong-with-the-baseline)
-2. [Architecture Overview](#2-architecture-overview)
-3. [Key Improvements — In Detail](#3-key-improvements-in-detail)
-4. [Algorithm Comparison & Rationale](#4-algorithm-comparison--rationale)
-5. [Feature Engineering](#5-feature-engineering)
-6. [Risk Management Framework](#6-risk-management-framework)
-7. [Reward Function Design](#7-reward-function-design)
-8. [Walk-Forward Validation](#8-walk-forward-validation)
-9. [Ensemble Inference](#9-ensemble-inference)
-10. [Installation & Usage](#10-installation--usage)
-11. [Configuration Reference](#11-configuration-reference)
-12. [Interpreting Results](#12-interpreting-results)
-13. [Next Steps & Research Directions](#13-next-steps--research-directions)
-
----
-
-## 1. What Was Wrong With the Baseline
-
-The original system had three systemic problems:
-
-| Problem | Root Cause | Consequence |
-|---|---|---|
-| **Extreme drawdown (~78%)** | No drawdown term in reward; discrete ±1 actions encourage all-in bets | Agent learns to maximise return without caring about losing capital |
-| **Overfit to training period** | Single train/test split; no regularisation | High variance between training and test performance |
-| **Poor signal quality** | Few technical indicators; no cross-stock information | Agent cannot distinguish market regimes or relative opportunities |
-
-The Nifty 50 buy-and-hold achieved a **Calmar ratio of 1.32** while the PPO agent only managed **0.78** — meaning the benchmark produced more return per unit of maximum drawdown. This is the key metric we target for improvement.
-
----
-
-## 2. Architecture Overview
+## 1. Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -80,9 +48,9 @@ The Nifty 50 buy-and-hold achieved a **Calmar ratio of 1.32** while the PPO agen
 
 ---
 
-## 3. Key Improvements — In Detail
+## 2. Key Improvements — In Detail
 
-### 3.1  Continuous Portfolio Weight Actions
+### 2.1  Continuous Portfolio Weight Actions
 
 **Baseline** used discrete actions: *buy / sell / hold* per stock. This is a fundamental mismatch — portfolio management is a continuous problem. With 10 stocks and 3 actions each, the agent could express only 3^10 = 59,049 distinct portfolios, most of which are extreme all-in bets.
 
@@ -96,7 +64,7 @@ weights:          [ 0.08, 0.24, 0.11, 0.05, 0.18, ...]   (non-neg, sum ≤ 0.98)
 final weights:    [ 0.08, 0.24, 0.11, 0.05, 0.18, ...]   (enforced risk limits)
 ```
 
-### 3.2  Risk-Adjusted Reward Function
+### 2.2  Risk-Adjusted Reward Function
 
 The original reward was simply `portfolio_return`, which incentivises reckless leverage and volatility. We restructure it as:
 
@@ -112,11 +80,11 @@ This means:
 - Each new drawdown increment is explicitly penalised — not just the level.
 - Excessive rebalancing is penalised, naturally reducing transaction costs.
 
-### 3.3  Validation-Driven Checkpointing (by Calmar Ratio)
+### 2.3  Validation-Driven Checkpointing (by Calmar Ratio)
 
 Instead of saving the model at the end of training (which is often overfit), we run a full validation episode every 20,000 steps and save only if the **Calmar ratio improves**. The Calmar ratio = CAGR / Max Drawdown, which is the exact metric we care about improving vs the baseline.
 
-### 3.4  Expanded & Richer Feature Set
+### 2.4  Expanded & Richer Feature Set
 
 26 features per stock (vs ~8 in the baseline), organised into families:
 
@@ -129,20 +97,20 @@ Instead of saving the model at the end of training (which is often overfit), we 
 
 Plus 3 cross-sectional rank features computed across all stocks simultaneously (see Section 5).
 
-### 3.5  Ensemble Inference
+### 2.5  Ensemble Inference
 
 After training SAC, TD3, A2C, and PPO independently, backtest averaging their action logits before applying the softmax. This reduces per-model variance significantly and tends to produce more stable, consistently positive performance.
 
 ---
 
-## 4. Algorithm Comparison & Rationale
+## 3. Algorithm Comparison & Rationale
 
 | Algorithm | Type | Key Property | Fit for Portfolio Trading |
 |---|---|---|---|
-| **SAC** | Off-policy, stochastic | Entropy regularisation prevents premature convergence to greedy, overfit policies | ★★★★★ Primary agent |
-| **TD3** | Off-policy, deterministic | Twin Q-networks reduce overestimation bias; OU noise for smooth action exploration | ★★★★☆ Strong alternative |
-| **A2C** | On-policy, stochastic | Memory-efficient; entropy bonus prevents mode collapse | ★★★☆☆ Useful in ensemble |
-| **PPO** | On-policy, clipped | Stable baseline; easy to tune; matches original system for fair comparison | ★★★☆☆ Comparison only |
+| **SAC** | Off-policy, stochastic | Entropy regularisation prevents premature convergence to greedy, overfit policies | Primary agent |
+| **TD3** | Off-policy, deterministic | Twin Q-networks reduce overestimation bias; OU noise for smooth action exploration | Strong alternative |
+| **A2C** | On-policy, stochastic | Memory-efficient; entropy bonus prevents mode collapse | Useful in ensemble |
+| **PPO** | On-policy, clipped | Stable baseline; easy to tune; matches original system for fair comparison | Comparison only |
 
 **Why SAC is primary:** Portfolio weight allocation is a continuous control problem. SAC's maximum-entropy framework explicitly discourages policies that put all weight in one stock — it naturally encourages diversification without needing to hard-code it. In noisy financial environments, this translates to more robust out-of-sample performance.
 
@@ -150,7 +118,7 @@ After training SAC, TD3, A2C, and PPO independently, backtest averaging their ac
 
 ---
 
-## 5. Feature Engineering
+## 4. Feature Engineering
 
 ### Per-ticker features (26 total)
 
@@ -197,11 +165,11 @@ All features are standardised to zero mean, unit variance over the training peri
 
 ---
 
-## 6. Risk Management Framework
+## 5. Risk Management Framework
 
 Risk controls operate at **two levels**:
 
-### 6.1  Environment-level hard constraints
+### 5.1  Environment-level hard constraints
 
 ```python
 # Applied every step, regardless of what the policy outputs:
@@ -212,7 +180,7 @@ blowup_threshold      = 0.20   # Episode terminates if portfolio < 20% of initia
 
 The max position constraint is applied **after** the softmax, by clamping and re-normalising. This is equivalent to a hard stop that the agent cannot circumvent.
 
-### 6.2  Reward-level soft constraints
+### 5.2  Reward-level soft constraints
 
 ```python
 drawdown_penalty = 2.0   # Each 1% new drawdown costs 2× the reward from returns
@@ -221,13 +189,13 @@ turnover_penalty = 0.5   # Each unit of portfolio turnover subtracts from reward
 
 These teach the agent to *prefer* controlled drawdowns and low-turnover strategies — not just avoid them mechanically.
 
-### 6.3  Volatility-aware position sizing (implicit)
+### 5.3  Volatility-aware position sizing (implicit)
 
 Because the agent's features include `vol_20`, `vol_60`, `vol_ratio`, and `atr_14`, it has all the information needed to scale positions down when volatility rises — it learns to do this if it reduces drawdown and thus improves the Calmar-based reward.
 
 ---
 
-## 7. Reward Function Design
+## 6. Reward Function Design
 
 The full reward at each step is:
 
@@ -246,7 +214,7 @@ R_t = 100 · log(V_t / V_{t-1})
 
 ---
 
-## 8. Walk-Forward Validation
+## 7. Walk-Forward Validation
 
 The project uses a **hold-out validation set** (2022) between the training period (2018–2021) and the test period (2023–2024). This prevents a subtle but common bug: choosing training hyperparameters based on test set performance, which inflates expected results.
 
@@ -263,7 +231,7 @@ The current `RiskAdjustedCallback` already implements per-step validation tracki
 
 ---
 
-## 9. Ensemble Inference
+## 8. Ensemble Inference
 
 At inference time, all trained agents observe the same market state and each outputs an action (portfolio weight logits). We average these logits before applying the softmax:
 
@@ -283,7 +251,7 @@ They also generalise better to unseen market conditions, which is what matters m
 
 ---
 
-## 10. Installation & Usage
+## 9. Installation & Usage
 
 ### Prerequisites
 
@@ -325,7 +293,7 @@ The code will automatically use it — no changes needed.
 
 ---
 
-## 11. Configuration Reference
+## 10. Configuration Reference
 
 All settings live in the `TradingConfig` dataclass at the top of `main.py`.
 
@@ -353,7 +321,7 @@ All settings live in the `TradingConfig` dataclass at the top of `main.py`.
 
 ---
 
-## 12. Interpreting Results
+## 11. Interpreting Results
 
 After training, you will see a table like this (illustrative numbers):
 
@@ -384,7 +352,7 @@ If you see a Calmar ratio still below the Nifty benchmark, try increasing `drawd
 
 ---
 
-## 13. Next Steps & Research Directions
+## 12. Next Steps & Research Directions
 
 ### Short-term improvements
 - **Hyperparameter optimisation**: Use Optuna to tune `drawdown_penalty`, `turnover_penalty`, network architecture, and learning rates jointly.
