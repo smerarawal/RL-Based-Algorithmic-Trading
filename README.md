@@ -1,4 +1,4 @@
-# Enhanced RL Trading System for NSE Indian Equities — v2.0
+# Enhanced RL Trading System for NSE Indian Equities
 
 > **"High returns with acceptable risk"** — a disciplined improvement over the original PPO system that suffered from extreme drawdowns (~78%) and poor risk-adjusted performance.
 
