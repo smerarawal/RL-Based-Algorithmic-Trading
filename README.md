@@ -321,27 +321,6 @@ All settings live in the `TradingConfig` dataclass at the top of `main.py`.
 
 ---
 
-## 11. Interpreting Results
-
-After training, you will see a table like this (illustrative numbers):
-
-```
-════════════════════════════════════════════════════════════════════
-                      PERFORMANCE COMPARISON
-════════════════════════════════════════════════════════════════════
-Metric                    SAC      TD3      A2C    Ensemble  Nifty50
-────────────────────────────────────────────────────────────────────
-Total Return (%)        ★ 52.1    44.8     38.2      48.6     30.4
-CAGR (%)                ★ 23.8    20.8     17.9      22.3     14.4
-Ann. Volatility (%)       18.2    17.1   ★ 14.8      16.9     13.2
-Sharpe Ratio            ★  1.31    1.22     1.21     1.28      0.65
-Sortino Ratio           ★  1.84    1.71     1.62     1.78      0.88
-Calmar Ratio            ★  1.89    1.64     1.52     1.72      1.32
-Max Drawdown (%)         -12.6   -12.7   ★ -11.8    -13.0    -10.9
-Win Rate (%)            ★ 54.2    53.8     53.1      54.0     52.3
-════════════════════════════════════════════════════════════════════
-```
-
 Key things to look for:
 
 1. **Calmar ratio > 1.32** (Nifty baseline) means we've beaten the benchmark on risk-adjusted terms — this is the primary goal.
